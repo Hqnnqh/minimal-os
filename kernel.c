@@ -46,6 +46,8 @@ size_t strlen(const char* str) {
 	return len;
 }
 
+void monitor_scroll(void); // function prototype
+
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;
 
@@ -77,10 +79,16 @@ void terminal_put_entry_at(char c, uint8_t color, size_t x, size_t y) {
 }
 
 void terminal_put_char(char c) {
+	if (c == '\n') {
+		terminal_column = 0;
+		if (++terminal_row == VGA_HEIGHT) monitor_scroll();
+		return;
+	}
+	
 	terminal_put_entry_at(c, terminal_color, terminal_column, terminal_row);
 	if (++terminal_column == VGA_WIDTH) {
 		terminal_column = 0;
-		if (++terminal_row == VGA_HEIGHT) terminal_row = 0;	
+		if (++terminal_row == VGA_HEIGHT) monitor_scroll();	
 	}
 }
 
@@ -92,7 +100,24 @@ void terminal_write_string(const char* data) {
 	terminal_write(data, strlen(data));
 }
 
+
+void monitor_scroll(void) {
+	for (size_t y = 1; y < VGA_HEIGHT; y++) {
+		for (size_t x = 0; x < VGA_WIDTH; x++) {
+			// Copy the current row to the previous row
+			const size_t index = (y - 1) * VGA_WIDTH + x;
+			terminal_buffer[index] = terminal_buffer[y * VGA_WIDTH + x];
+		}
+	}
+	// clear last row
+	for (size_t x = 0; x < VGA_WIDTH; x++) {
+		const size_t index = (VGA_HEIGHT - 1) * VGA_WIDTH + x;
+		terminal_buffer[index] = vga_entry(' ', terminal_color);
+	}
+	terminal_row = VGA_HEIGHT - 1;
+}
+
 void kernel_main(void) {
 	terminal_initialize();
-	terminal_write_string("Hello, kernel World!\n");
+	terminal_write_string("Hello World!\n:)\n");
 }
